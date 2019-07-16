@@ -2,25 +2,18 @@ import os
 import logging
 # THIRD PARTIES
 from dotenv import load_dotenv
-from flask import Flask, request
 import telegram
-from telegram.ext import Updater, InlineQueryHandler, CommandHandler, MessageHandler
+from telegram.ext import CommandHandler, MessageHandler
 
 # Set globals
-load_dotenv('.env')
+load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env'))
 TOKEN = os.environ['TOKEN']
 HOST = os.environ['HOST']
 PORT = os.environ['PORT']
 DEBUG = bool(int(os.environ['DEBUG']))
 
-# Set logging for debugging
-if DEBUG:
-    logging.basicConfig(
-        level=logging.DEBUG,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-
 bot = telegram.Bot(TOKEN)
-app = Flask(__name__)
+dispatcher = telegram.ext.Dispatcher(bot, None)
 
 def hello(bot, update):
     logging.debug("Got hello command!")
@@ -36,19 +29,18 @@ def reply(bot, update):
     text = update.message.text.encode('utf-8').decode()
     logging.debug("Got text message :", text)
 
-    bot.sendMessage(chat_id=chat_id, text=text.upper(), reply_to_message_id=msg_id)
+    bot.sendMessage(chat_id=chat_id, text=text.lower(), reply_to_message_id=msg_id)
 
     return 'OK'
 
-if __name__ == '__main__':
-    updater = Updater(bot=bot)
-    updater.dispatcher.add_handler(CommandHandler('hello', hello))
-    updater.dispatcher.add_handler(MessageHandler(None, callback=reply))
+dispatcher.add_handler(CommandHandler('hello', hello))
+dispatcher.add_handler(MessageHandler(None, callback=reply))
 
+if __name__ == '__main__':
+    updater = telegram.ext.Updater(bot=bot)
+    updater.dispatcher = dispatcher
     if DEBUG:
         updater.start_polling()
     else:
-        updater.start_webhook()
-
+        updater.start_webhook(listen=HOST, port=PORT, url_path='webhook')
     updater.idle()
-    app.run(debug=DEBUG, threaded=True)
