@@ -12,7 +12,6 @@ flask = "*"
 python-dotenv = "*"
 flask-sqlalchemy = "*"
 flask-migrate = "*"
-sqlite3 = "*"
 flask-script = "*"
 
 [requires]

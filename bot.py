@@ -8,7 +8,8 @@ from telegram.ext import CommandHandler, MessageHandler, CallbackQueryHandler
 from telegram.ext.filters import Filters
 
 # Set globals
-load_dotenv('.env')
+BASEDIR = os.path.abspath(os.path.dirname(__file__))
+load_dotenv(os.path.join(BASEDIR, '.env'))
 TOKEN = os.environ['TELEGRAM_BOT_TOKEN']
 HOST = os.environ['HOST']
 PORT = os.environ['PORT']

@@ -12,7 +12,8 @@ from telegram.ext import Updater
 # OWN
 from bot import bot, updater, dispatcher
 # Load env variables
-load_dotenv('.env')
+BASEDIR = os.path.abspath(os.path.dirname(__file__))
+load_dotenv(os.path.join(BASEDIR, '.env'))
 
 app = Flask(__name__)
 app.config.from_object(os.environ['FLASK_APP_SETTINGS'])

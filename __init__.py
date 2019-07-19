@@ -1,10 +1,10 @@
 from app import app
+from bot import dispatcher
 
 if __name__ == '__main__':
-    if DEBUG:
-        updater = Updater(bot=bot)
-        updater.dispatcher = dp
+    if app.config['DEBUG']:
         updater.start_polling()
-        updater.idle()
     else:
-        app.run(debug=True, threaded=True)
+        bot.setWebhook('https://{HOST}/webhook/{TOKEN}'.format(HOST=HOST, TOKEN=TOKEN))
+    app.run(debug=DEBUG, threaded=True)
+    
