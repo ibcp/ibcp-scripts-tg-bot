@@ -10,6 +10,10 @@ requests = "*"
 python-telegram-bot = "*"
 flask = "*"
 python-dotenv = "*"
+flask-sqlalchemy = "*"
+flask-migrate = "*"
+sqlite3 = "*"
+flask-script = "*"
 
 [requires]
 python_version = "3.6"

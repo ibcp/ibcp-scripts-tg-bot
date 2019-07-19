@@ -8,11 +8,10 @@ from telegram.ext import CommandHandler, MessageHandler, CallbackQueryHandler
 from telegram.ext.filters import Filters
 
 # Set globals
-load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env'))
-TOKEN = os.environ['TOKEN']
+load_dotenv('.env')
+TOKEN = os.environ['TELEGRAM_BOT_TOKEN']
 HOST = os.environ['HOST']
 PORT = os.environ['PORT']
-DEBUG = bool(int(os.environ['DEBUG']))
 
 bot = telegram.Bot(TOKEN)
 #dispatcher = telegram.ext.Dispatcher(bot, None)
@@ -20,7 +19,7 @@ bot = telegram.Bot(TOKEN)
 def hello(bot, update):
     logging.debug("Got hello command!")
     chat_id = update.message.chat.id
-    bot.sendMessage(chat_id=chat_id, text='Hi there!')
+    bot.send_message(chat_id=chat_id, text='Hi there!')
     return 'Hello World!'
 
 def reply_upper(bot, update):
@@ -31,7 +30,7 @@ def reply_upper(bot, update):
     text = update.message.text.encode('utf-8').decode()
     logging.debug("Got text message :", text)
 
-    bot.sendMessage(chat_id=chat_id, text=text.upper(), reply_to_message_id=msg_id)
+    bot.send_message(chat_id=chat_id, text=text.upper(), reply_to_message_id=msg_id)
 
     return 'OK'
 
@@ -40,13 +39,13 @@ def choose_document_action(bot, update):
     msg_id = update.message.message_id
 
     keyboard = [
-        [InlineKeyboardButton("Рекалибровать BWTek", callback_data='document:%s:recal' % update.message.document.file_id)],
+        [InlineKeyboardButton("Рекалибровать BWTek", callback_data='recal:%s:recal' % update.message.document.file_id)],
         [InlineKeyboardButton("Посчитать для ДЭФ", callback_data='document:%s:dep' % update.message.document.file_id)]
         ]
 
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    bot.sendMessage(chat_id=chat_id, text='Что мне сделать?', reply_markup=reply_markup)
+    bot.send_message(chat_id=chat_id, text='Что мне сделать?', reply_markup=reply_markup)
 
     return 'OK'
 
@@ -68,13 +67,3 @@ updater.dispatcher.add_handler(MessageHandler(Filters.text, callback=reply_upper
 updater.dispatcher.add_handler(MessageHandler(Filters.document, callback=choose_document_action))
 updater.dispatcher.add_handler(CallbackQueryHandler(callback=inline_buttons_handler))
 dispatcher = updater.dispatcher
-
-if __name__ == '__main__':
-    if DEBUG:
-        logging.basicConfig(
-            level=logging.DEBUG,
-            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        updater.start_polling()
-    else:
-        updater.start_webhook(listen=HOST, port=PORT, url_path='webhook')
-    updater.idle()
