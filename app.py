@@ -1,42 +1,29 @@
 # BUILD-IN
 import os
-import sqlite3
 import logging
-from logging.handlers import RotatingFileHandler
 # THIRD PARTIES
 from dotenv import load_dotenv
 from flask import Flask, request
-from flask_sqlalchemy import SQLAlchemy
 import telegram
-from telegram.ext import Updater
 # OWN
-from bot import bot, updater, dispatcher
-# Load env variables
+from models import db
+
+# Load .env variables
 BASEDIR = os.path.abspath(os.path.dirname(__file__))
 load_dotenv(os.path.join(BASEDIR, '.env'))
-
-app = Flask(__name__)
-app.config.from_object(os.environ['FLASK_APP_SETTINGS'])
-db = SQLAlchemy(app)
-
-from models import *
-
-# Set globals
-DEBUG = app.config['DEBUG']
-TOKEN = app.config['BOT_TOKEN']
 HOST = os.environ['HOST']
 
-# Set logging for debugging
-if DEBUG:
-    logging.basicConfig(
-        level=logging.DEBUG,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+# Create an app
+app = Flask(__name__)
+app.config.from_object(os.environ['FLASK_APP_SETTINGS'])
+db.init_app(app)
+from bot import bot, updater, dispatcher
 
 @app.route('/')
 def hello_world():
     return 'Hello Flask!'
 
-@app.route('/webhook/'+TOKEN, methods=['POST'])
+@app.route('/webhook/'+app.config['BOT_TOKEN'], methods=['POST'])
 def webhook():
     # Retrieve the message in JSON and then transform it to Telegram object
     update = telegram.Update.de_json(request.get_json(force=True), bot)
@@ -46,16 +33,21 @@ def webhook():
 @app.route('/setwebhook', methods=['GET', 'POST'])
 def set_webhook():
     # Set the webhook for the bot
-    s = bot.setWebhook('https://{HOST}/webhook/{TOKEN}'.format(HOST=HOST, TOKEN=TOKEN))
+    s = bot.setWebhook('https://{HOST}/webhook/{TOKEN}'.format(HOST=HOST, TOKEN=app.config['BOT_TOKEN']))
     if s:
-        return "webhook setup ok"
+        return "Webhook setup is OK"
     else:
-        raise Exception("webhook setup failed")
+        raise Exception("Webhook setup failed")
 
 if __name__ == '__main__':
-    if DEBUG:
+    if app.config['DEBUG']:
+        logging.basicConfig(
+            format='%(asctime)s :  %(name)s : %(levelname)s : %(message)s',
+            level=logging.DEBUG
+            )
+
+    if app.config['DEVELOPMENT']:
         updater.start_polling()
-    else:
-        bot.setWebhook('https://{HOST}/webhook/{TOKEN}'.format(HOST=HOST, TOKEN=TOKEN))
-    app.run(debug=DEBUG, threaded=True)
+        updater.idle()
+    app.run(threaded=app.config['THREADED'])
 

@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "b039f42527644f5a4ee05613577b9df52965cec7e9157f2b39352f6dd21e6fb8"
+            "sha256": "9ee60f3d8ae0d31fe7c03495b536f60a77c11686cc7ae6225de3b81d27e37c2c"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -104,6 +104,13 @@
             ],
             "version": "==2.7"
         },
+        "easyprocess": {
+            "hashes": [
+                "sha256:e1871651a3c9f192090c6f523f48bc73ba6ec651530a8c4cd7e2776a4c54d795",
+                "sha256:f757cd16cdab5b87117b4ee6cf197f99bfa109253364c7bd717ad0bcd39218a0"
+            ],
+            "version": "==0.2.7"
+        },
         "flask": {
             "hashes": [
                 "sha256:13f9f196f330c7c2c5d7a5cf91af894110ca0215ac051b5844701f2bfd934d52",
@@ -164,9 +171,9 @@
         },
         "mako": {
             "hashes": [
-                "sha256:95ee720cc3453063788515d55bd7ce4a2a77b7b209e4ac70ec5c86091eb02541"
+                "sha256:f5a642d8c5699269ab62a68b296ff990767eb120f51e2e8f3d6afb16bdb57f4b"
             ],
-            "version": "==1.0.13"
+            "version": "==1.0.14"
         },
         "markupsafe": {
             "hashes": [
@@ -201,11 +208,23 @@
             ],
             "version": "==1.1.1"
         },
+        "patool": {
+            "hashes": [
+                "sha256:3f642549c9a78f5b8bef1af92df385b521d360520d1f34e4dba3fd1dee2a21bc",
+                "sha256:e3180cf8bfe13bedbcf6f5628452fca0c2c84a3b5ae8c2d3f55720ea04cb1097"
+            ],
+            "index": "pypi",
+            "version": "==1.12"
+        },
         "pycparser": {
             "hashes": [
                 "sha256:a988718abfad80b6b157acce7bf130a30876d27603738ac39f140993246b25b3"
             ],
             "version": "==2.19"
+        },
+        "pyspectra": {
+            "git": "https://github.com/it-scientists/pyspectra.git",
+            "ref": "c6c5580b1fef2972f368ad4f18a7ff5183c9df15"
         },
         "python-dateutil": {
             "hashes": [
@@ -238,6 +257,13 @@
             "index": "pypi",
             "version": "==11.1.0"
         },
+        "pyunpack": {
+            "hashes": [
+                "sha256:4668ae507c26ac2ac2847ef83e8d6adfed86721f3a9346c2dfc92066f26d8fe7"
+            ],
+            "index": "pypi",
+            "version": "==0.1.2"
+        },
         "requests": {
             "hashes": [
                 "sha256:11e007a8a2aa0323f5a921e9e6a2d7e4e67d9877e85773fba9ba6419025cbeb4",
@@ -255,9 +281,9 @@
         },
         "sqlalchemy": {
             "hashes": [
-                "sha256:c30925d60af95443458ebd7525daf791f55762b106049ae71e18f8dd58084c2f"
+                "sha256:217e7fc52199a05851eee9b6a0883190743c4fb9c8ac4313ccfceaffd852b0ff"
             ],
-            "version": "==1.3.5"
+            "version": "==1.3.6"
         },
         "urllib3": {
             "hashes": [

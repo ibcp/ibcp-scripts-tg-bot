@@ -13,6 +13,9 @@ python-dotenv = "*"
 flask-sqlalchemy = "*"
 flask-migrate = "*"
 flask-script = "*"
+patool = "*"
+pyunpack = "*"
+pyspectra = {git = "https://github.com/it-scientists/pyspectra.git"}
 
 [requires]
 python_version = "3.6"

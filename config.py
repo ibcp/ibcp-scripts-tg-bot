@@ -8,6 +8,7 @@ class Config(object):
     DEBUG = False
     DEVELOPMENT = False
     CSRF_ENABLED = True
+    THREADED = False
     SECRET_KEY = os.environ['SECRET_KEY']
     SQLALCHEMY_DATABASE_URI = os.environ['DATABASE_URL']
     SQLALCHEMY_TRACK_MODIFICATIONS = True
@@ -16,7 +17,7 @@ class Config(object):
 
 class ProductionConfig(Config):
     DEBUG = False
-
+    THREADED = True
 
 class DevelopmentConfig(Config):
     DEVELOPMENT = True

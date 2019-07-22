@@ -1,4 +1,6 @@
 import os
+import json
+import zipfile
 import logging
 # THIRD PARTIES
 from dotenv import load_dotenv
@@ -6,22 +8,26 @@ import telegram
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CommandHandler, MessageHandler, CallbackQueryHandler
 from telegram.ext.filters import Filters
+# OWN
+from models import UserFiles
+from utils import *
+from actions import *
+
+ACTIONS_MAPPING = {
+    'recal': recal,
+}
 
 # Set globals
 BASEDIR = os.path.abspath(os.path.dirname(__file__))
 load_dotenv(os.path.join(BASEDIR, '.env'))
 TOKEN = os.environ['TELEGRAM_BOT_TOKEN']
-HOST = os.environ['HOST']
-PORT = os.environ['PORT']
-
-bot = telegram.Bot(TOKEN)
-#dispatcher = telegram.ext.Dispatcher(bot, None)
 
 def hello(bot, update):
     logging.debug("Got hello command!")
     chat_id = update.message.chat.id
-    bot.send_message(chat_id=chat_id, text='Hi there!')
-    return 'Hello World!'
+    bot.send_chat_action(chat_id=chat_id,action=telegram.ChatAction.TYPING)
+    bot.send_message(chat_id=chat_id, text='Hi there! 👋')
+    return 'OK'
 
 def reply_upper(bot, update):
     chat_id = update.message.chat.id
@@ -29,20 +35,30 @@ def reply_upper(bot, update):
 
     # Telegram understands UTF-8, so encode text for unicode compatibility
     text = update.message.text.encode('utf-8').decode()
-    logging.debug("Got text message :", text)
-
+    bot.send_chat_action(chat_id=chat_id,action=telegram.ChatAction.TYPING)
     bot.send_message(chat_id=chat_id, text=text.upper(), reply_to_message_id=msg_id)
-
     return 'OK'
 
 def choose_document_action(bot, update):
+    from app import app, db
     chat_id = update.message.chat.id
     msg_id = update.message.message_id
 
-    keyboard = [
-        [InlineKeyboardButton("Рекалибровать BWTek", callback_data='recal:%s:recal' % update.message.document.file_id)],
-        [InlineKeyboardButton("Посчитать для ДЭФ", callback_data='document:%s:dep' % update.message.document.file_id)]
-        ]
+    userfile = UserFiles(
+        user_id = update.message.from_user.id,
+        chat_id = chat_id,
+        message_id = msg_id,
+        file_id = update.message.document.file_id,
+        file_name = update.message.document.file_name,
+        )
+    with app.app_context():
+        db.session.add(userfile)
+        db.session.commit()
+        logging.debug('Created a record for user file: %s' % userfile)
+        keyboard = [
+            [InlineKeyboardButton("Рекалибровать BWTek", callback_data='{"action":"recal", "uf":"%s"}' % userfile.id)],
+            [InlineKeyboardButton("Посчитать для ДЭФ", callback_data='{"action":"dep", "uf":"%s"}' % userfile.id)]
+            ]
 
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -51,17 +67,76 @@ def choose_document_action(bot, update):
     return 'OK'
 
 def inline_buttons_handler(bot, update):
+    from app import app, db
     query = update.callback_query
     chat_id = query.message.chat_id
 
+    logging.debug('PROCESSING INLINE BUTTON ACTION: %s' % query.data)
+
     bot.send_chat_action(chat_id=chat_id,action=telegram.ChatAction.TYPING)
-    file = bot.getFile(query.data.split(':')[1])
-    file_path = 'downloads/%s %s' % (file.file_id, os.path.basename(file.file_path))
-    file.download(custom_path=file_path)
-    bot.edit_message_text(text="Готово! Скоро пришлю обработанные файлы",chat_id=chat_id, message_id=query.message.message_id, document=open(file_path, 'rb'))
-    bot.send_document(chat_id=chat_id, document=open(file_path, 'rb'), filename=os.path.basename(file.file_path), reply_to_message_id=query.message.message_id)
+    # Try to get params
+    try:
+        params = json.loads(query.data)
+        action = params.get('action')
+        userfile_id = int(params.get('uf'))
+    except Exception as e:
+        logging.error(e)
+        bot.send_message(
+            chat_id=chat_id,
+            text='''
+            Упс! Что-то пошло не так 😱
+            Передайте это администратору, чтобы он все исправил:
+            Query data: %s
+            Exception: %s
+            ''' % (query.data, e)
+            )
+        raise
+
+    # Try to get info about file from db
+    file_info = get_file_info(bot, userfile_id)
+    if action in ACTIONS_MAPPING:
+        outfile = 'processed_files/%s %s %s.zip' % (remove_extension(file_info['filename']), file_info['userfile_id'], action)
+        bot.send_message(text="Сейчас посмотрю...⏳", chat_id=chat_id)
+        try:
+            extract_file(bot, chat_id, file_info)
+            statuses = ACTIONS_MAPPING[action](file_info['extract_path'])
+            if any(statuses.values()):
+                zipdir(file_info['extract_path'], outfile)
+                bot.send_message(chat_id=chat_id, text='Готово! 🚀')
+                bot.send_document(
+                    chat_id=chat_id,
+                    document=open(outfile, 'rb'),
+                    filename=os.path.basename(outfile),
+                    reply_to_message_id=file_info['message_id']
+                    )
+                if not all(statuses.values()):
+                    message = "⚠️ Следующие файлы не удалось обработать: ⚠️\n"
+                    for file, status in statuses.items():
+                        if not status:
+                            message += "\n ❌ %s" % os.path.relpath(file, file_info['extract_path'])
+                    bot.send_message(chat_id=chat_id, text=message)
+            else:
+                bot.send_message(chat_id=chat_id, text='Не удалось обработать ни одного файла. Проверьте, что файлы предоставлены в нужном формате.')
+        except Exception as e:
+            logging.error(e)
+            bot.send_message(
+                chat_id=chat_id,
+                text='''
+                Упс! Что-то пошло не так 😱
+                Передайте это администратору, чтобы он все исправил:
+                Query data: %s
+                Exception: %s
+                ''' % (query.data, e)
+                )
+            raise
+    else:
+        bot.send_message(
+            chat_id=chat_id,
+            text='Данная команда в процессе реализации и пока не доступна 😞'
+        )
     return 'OK'
 
+bot = telegram.Bot(TOKEN)
 updater = telegram.ext.Updater(bot=bot)
 updater.dispatcher.add_handler(CommandHandler('hello', hello))
 updater.dispatcher.add_handler(MessageHandler(Filters.text, callback=reply_upper))
