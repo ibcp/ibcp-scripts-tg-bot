@@ -23,8 +23,14 @@ def get_file_info(bot, userfile_id):
         "message_id": file_message_id,
         "filename": filename,
         "file_extension": filename.split('.')[-1],
-        "download_path": 'user_files/%s %s' % (userfile_id, filename),
-        "extract_path": remove_extension('tmp/%s %s' % (userfile_id, filename)),
+        "download_path": os.path.join(
+            app.config['DOWLOAD_DIR'],
+            '%s %s' % (userfile_id, filename)
+            ),
+        "extract_path": remove_extension(os.path.join(
+            app.config['TMP_DIR'],
+            '%s %s' % (userfile_id, filename)
+            )),
     }
 
 def extract_file(bot, chat_id, file_info):

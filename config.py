@@ -13,6 +13,9 @@ class Config(object):
     SQLALCHEMY_DATABASE_URI = os.environ['DATABASE_URL']
     SQLALCHEMY_TRACK_MODIFICATIONS = True
     BOT_TOKEN = os.environ['TELEGRAM_BOT_TOKEN']
+    TMP_DIR = os.path.join(BASEDIR, 'tmp')
+    DOWLOAD_DIR = os.path.join(BASEDIR, 'downloads')
+    PROCESSED_DIR = os.path.join(BASEDIR, 'processed_files')
 
 
 class ProductionConfig(Config):

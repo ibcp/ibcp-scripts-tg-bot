@@ -3,7 +3,7 @@
 __pycache__/
 *.pyc
 *.db
-user_files/
+downloads/
 processed_files/
 tmp/
 
