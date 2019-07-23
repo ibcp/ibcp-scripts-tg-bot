@@ -31,23 +31,36 @@ formatter = logging.Formatter('%(asctime)s : %(name)s : %(levelname)s : %(messag
 fh.setFormatter(formatter)
 logger.addHandler(fh)
 
-def hello(bot, update):
-    logger.debug("Got hello command: %s" % update)
+# ===== COMMANDS =====
+def start(bot, update):
+    logger.debug("Got start command: %s" % update)
     chat_id = update.message.chat.id
     bot.send_chat_action(chat_id=chat_id,action=telegram.ChatAction.TYPING)
-    bot.send_message(chat_id=chat_id, text='Hi there! 👋')
+    message = [
+        "Здравствуйте!\n",
+        "Я бот ИБХФ РАН, который поможет автоматизировать рутинные задачи лаборатории.",
+        "Я пока еще молод и не всему успел научиться.",
+        "На текущий момент я могу рекалибровать спетры BWTek."
+        "Также я учусь обсчитывать эксперименты с ДЭФ (спросите Наташу:))",
+        "и строить калибровки, так что скоро это тоже будет доступно.",
+        "\n\nЧтобы рекалибровать спетры просто пришлите данные в архиве *.zip или *.rar",
+        "и выберете соответствующее действие. Если нужно обработать только один файл,",
+        "то можно его не архифировать. Архивы *.zip более предпочтительны.",
+        "\n\nЕсли возникнут сложности, обращайтесь к моему непосредственному руководителю:",
+        "Гулиев Рустам, glvrst@gmail.com, +79160013525",
+        "\n\nЧтобы посмотреть это сообщение еще раз просто пришлите команду /help",
+    ]
+    bot.send_message(chat_id=chat_id, text=' '.join(message))
     return 'OK'
 
-def reply_upper(bot, update):
-    logger.debug("Got a text message: %s" % update)
+def unknown(bot, update):
+    logger.debug("Got unknown command: %s" % update)
     chat_id = update.message.chat.id
-    msg_id = update.message.message_id
-    # Telegram understands UTF-8, so encode text for unicode compatibility
-    text = update.message.text.encode('utf-8').decode()
     bot.send_chat_action(chat_id=chat_id,action=telegram.ChatAction.TYPING)
-    bot.send_message(chat_id=chat_id, text=text.upper(), reply_to_message_id=msg_id)
+    bot.send_message(chat_id=chat_id, text='Я такого еще не умею. Наберите /help для просмотра инструкции и текущих возможностей.')
     return 'OK'
 
+# ===== DOCUMENTS =====
 def choose_document_action(bot, update):
     from app import app, db
     logger.debug("Got a message with document: %s" % update)
@@ -77,6 +90,8 @@ def choose_document_action(bot, update):
 
     return 'OK'
 
+
+# ===== INLINE BUTTONS =====
 def inline_buttons_handler(bot, update):
     from app import app, db
     query = update.callback_query
@@ -93,12 +108,12 @@ def inline_buttons_handler(bot, update):
         logger.error(e)
         bot.send_message(
             chat_id=chat_id,
-            text=[
+            text="\n".join([
                 "Упс! Что-то пошло не так 😱",
                 "Передайте это администратору, чтобы он все исправил:",
                 "Query data: %s" % query.data,
                 "Exception: %s" % e,
-                ].join("\n")
+                ])
             )
         raise
 
@@ -134,12 +149,12 @@ def inline_buttons_handler(bot, update):
             logger.error(e)
             bot.send_message(
                 chat_id=chat_id,
-                text=[
+                text="\n".join([
                     "Упс! Что-то пошло не так 😱",
                     "Передайте это администратору, чтобы он все исправил:",
                     "Query data: %s" % query.data,
                     "Exception: %s" % e,
-                    ].join("\n")
+                    ])
                 )
             raise
     else:
@@ -149,10 +164,12 @@ def inline_buttons_handler(bot, update):
         )
     return 'OK'
 
+# ===== SET HANDLERS =====
 bot = telegram.Bot(TOKEN)
 updater = telegram.ext.Updater(bot=bot)
-updater.dispatcher.add_handler(CommandHandler('hello', hello))
-updater.dispatcher.add_handler(MessageHandler(Filters.text, callback=reply_upper))
+updater.dispatcher.add_handler(CommandHandler('help', start))
+updater.dispatcher.add_handler(CommandHandler('start', start))
 updater.dispatcher.add_handler(MessageHandler(Filters.document, callback=choose_document_action))
 updater.dispatcher.add_handler(CallbackQueryHandler(callback=inline_buttons_handler))
+updater.dispatcher.add_handler(MessageHandler(Filters.all, unknown))
 dispatcher = updater.dispatcher
