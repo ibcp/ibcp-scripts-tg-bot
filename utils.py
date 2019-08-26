@@ -1,7 +1,7 @@
 import os
 import logging
 import zipfile
-from pyunpack import Archive
+import patoolib
 
 
 def remove_extension(path):
@@ -61,8 +61,8 @@ def extract_file(bot, chat_id, file_info):
         )
     elif file_info["file_extension"] in ("zip", "rar"):
         try:
-            Archive(file_info["download_path"]).extractall(
-                file_info["extract_path"]
+            patoolib.extract_archive(
+                file_info["download_path"], outdir=file_info["extract_path"]
             )
         except Exception as e:
             logging.error(e)
