@@ -8,8 +8,4 @@ repos:
     rev: v1.2.3
     hooks:
     - id: flake8
--   repo: https://github.com/pre-commit/mirrors-mypy
-    rev: '977b5b383e7b3f65f21b94300f4d78d35c1668c7'
-    hooks:
-    -   id: mypy
-        args: [--no-strict-optional, --ignore-missing-imports]
+      exclude: 'migrations'

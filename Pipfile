@@ -4,20 +4,27 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [dev-packages]
-pre-commit = "*"
-mypy = "*"
-flake8 = "*"
+pre-commit = ">=1.18"
+mypy = ">=0.720"
+flake8 = ">=3.7"
+black = ">=19.3b0"
 
 [packages]
-requests = "*"
-python-telegram-bot = "*"
-flask = "*"
-python-dotenv = "*"
-flask-sqlalchemy = "*"
-flask-migrate = "*"
-flask-script = "*"
-patool = "*"
-pyspectra = {git = "https://github.com/it-scientists/pyspectra.git"}
+requests = ">=2.22"
+python-telegram-bot = ">=12.0"
+flask = ">=1.1"
+python-dotenv = ">=0.10"
+flask-sqlalchemy = ">=2.4"
+flask-migrate = ">=2.5"
+flask-script = ">=2.0"
+patool = ">=1.12"
+pyspectra = {git = "https://github.com/ibcp/pyspectra.git"}
+openpyxl = ">=2.6.3"
+pandas = ">=0.24"
+numpy = ">=1.16"
 
 [requires]
 python_version = "3.6"
+
+[pipenv]
+allow_prereleases = true
