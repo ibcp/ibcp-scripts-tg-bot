@@ -157,9 +157,11 @@ def inline_buttons_handler(bot, update):
         try:
             extract_file(bot, chat_id, file_info)
             statuses = ACTIONS_MAPPING[action](file_info["extract_path"])
+            if isinstance(statuses, bool):
+                statuses = [statuses]
             if any(statuses.values()):
                 zipdir(file_info["extract_path"], outfile)
-                bot.send_message(chat_id=chat_id, text="Готово! 🚀")
+                bot.send_message(chat_id=chat_id, text="Готово!🚀")
                 bot.send_document(
                     chat_id=chat_id,
                     document=open(outfile, "rb"),

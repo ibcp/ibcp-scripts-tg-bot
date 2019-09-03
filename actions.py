@@ -1,4 +1,5 @@
 import os
+import shutil
 import glob
 import logging
 import numpy as np
@@ -72,7 +73,7 @@ def dep(target_dir):
     df["relative_peak"] = (spc - bl).spc.max(axis=1).values.round(1)
 
     # Clear target dir to keep only reports
-    os.rmdir(target_dir)
+    shutil.rmtree(target_dir, ignore_errors=True)
     os.mkdir(target_dir)
 
     # Write to excel
@@ -102,3 +103,4 @@ def dep(target_dir):
             writer.sheets[experiment].column_dimensions["C"].width = 20
             writer.sheets[experiment].column_dimensions["D"].width = 20
             writer.sheets[experiment].column_dimensions["E"].width = 15
+    return True
