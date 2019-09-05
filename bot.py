@@ -75,6 +75,19 @@ def choose_document_action(bot, update):
     chat_id = update.message.chat.id
     msg_id = update.message.message_id
 
+    # Ignore the file if it is larger than 20Mb in size
+    if update.message.document.file_size > 20 * 1024 * 1024:
+        bot.send_message(
+            chat_id=chat_id,
+            text="Этот файл слишком большой. "
+            "Из-за ограничений телеграма "
+            "файлы размером больше 20Мб "
+            "не удается обработать. "
+            "Отправьте, пожалуйста, "
+            "Ваш на файл по частям < 20Мб.",
+        )
+        return "OK"
+
     userfile = UserFiles(
         user_id=update.message.from_user.id,
         chat_id=chat_id,
@@ -171,9 +184,16 @@ def inline_buttons_handler(bot, update):
                     message = "⚠️ Следующие файлы не удалось обработать: ⚠️\n"
                     for file, status in statuses.items():
                         if not status:
-                            message += "\n ❌ %s" % os.path.relpath(
+                            file_path = os.path.relpath(
                                 file, file_info["extract_path"]
                             )
+                            # Telegram has limit for message length, so we
+                            # split the message in case it is too long (> 4096)
+                            if len(message) + len(file_path) + 10 < 4096:
+                                message += f"\n ❌ {file_path}"
+                            else:
+                                bot.send_message(chat_id=chat_id, text=message)
+                                message = f" ❌ {file_path}"
                     bot.send_message(chat_id=chat_id, text=message)
             else:
                 bot.send_message(
