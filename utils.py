@@ -1,4 +1,5 @@
 import os
+import shutil
 import logging
 import zipfile
 import patoolib
@@ -50,8 +51,9 @@ def extract_file(bot, chat_id, file_info):
 
     file_info["file"].download(custom_path=file_info["download_path"])
 
-    if not os.path.exists(file_info["extract_path"]):
-        os.makedirs(file_info["extract_path"])
+    if os.path.exists(file_info["extract_path"]):
+        shutil.rmtree(file_info["extract_path"], ignore_errors=True)
+    os.makedirs(file_info["extract_path"])
 
     if file_info["file_extension"] == "txt":
         file_info["file"].download(

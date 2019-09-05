@@ -32,6 +32,14 @@ def recalibrate(target_dir):
 
 def dep(target_dir):
     """Build summary of a dielectropharesis experiment"""
+
+    # If all in one root dir switch to it
+    content = os.listdir(target_dir)
+    if (len(content) == 1) and (
+        os.path.isdir(os.path.join(target_dir, content[0]))
+    ):
+        target_dir = os.path.join(target_dir, content[0])
+
     # Read all files
     files = glob.glob(os.path.join(target_dir, "**/*.txt"), recursive=True)
     s = pyspectra.read_filelist(files, pyspectra.read_bwtek, meta="Date")
@@ -42,8 +50,9 @@ def dep(target_dir):
     # Folder of the file
     df["folder"] = (
         df["filename"]
-        .str.slice(len(target_dir))
         .apply(os.path.dirname)
+        .str.slice(start=len(target_dir))
+        .str.lstrip(os.path.sep)
         .astype("category")
     )
 
@@ -103,4 +112,4 @@ def dep(target_dir):
             writer.sheets[experiment].column_dimensions["C"].width = 20
             writer.sheets[experiment].column_dimensions["D"].width = 20
             writer.sheets[experiment].column_dimensions["E"].width = 15
-    return True
+    return {"report.xlsx": True}
