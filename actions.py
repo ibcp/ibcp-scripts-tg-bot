@@ -75,7 +75,7 @@ def dep(target_dir):
     )
 
     # Calculate relative peak intensity
-    spc = s[:, :, 1500:1650]
+    spc = s[:, :, 1500:1651]
     bl = spc.copy()
     bl.spc.iloc[:, 1:-1] = np.nan
     bl.approx_na(inplace=True, method="linear")
