@@ -18,7 +18,7 @@ def recalibrate_single_file(filepath):
 def recalibrate(target_dir):
     files_status = {}
     for filename in glob.iglob(
-        os.path.join(target_dir, "**/*"), recursive=True
+        os.path.join(target_dir, "**/*.txt"), recursive=True
     ):
         if os.path.isfile(filename):
             try:
