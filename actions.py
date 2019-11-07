@@ -31,7 +31,7 @@ def recalibrate(target_dir):
 
 
 def dep(target_dir):
-    """Build summary of a dielectropharesis experiment"""
+    """Build summary of a dielectrophoresis experiment"""
 
     # If all in one root dir switch to it
     content = os.listdir(target_dir)
@@ -113,3 +113,54 @@ def dep(target_dir):
             writer.sheets[experiment].column_dimensions["D"].width = 20
             writer.sheets[experiment].column_dimensions["E"].width = 15
     return {"report.xlsx": True}
+
+
+def process_agnp_synthesis_experiments(target_dir):
+    """Build summary of an AgNp synthesis experiment"""
+    # Read all files
+    files = glob.glob(os.path.join(target_dir, "**/*.txt"), recursive=True)
+    s = pyspectra.read_filelist(files, pyspectra.read_bwtek)
+    s.reset_index(drop=True, inplace=True)
+    df = s.data
+    # Keep only used region to use less memory
+    df["peak"] = s[:, :, 1560:1590].spc.max(axis=1)
+    df["bg"] = s[:, :, 1990:2010].spc.median(axis=1)
+    df["peak_rel"] = df["peak"] - df["bg"]
+    del s
+
+    # Folder of the file
+    df["folder"] = (
+        df["filename"]
+        .apply(lambda x: x.split(os.path.sep)[-2])
+        .astype("category")
+    )
+    df["filename"] = df["filename"].apply(os.path.basename)
+    df["sp"] = (
+        df["filename"].str.extract(r"^SP_([0-9]+)[ \.]").astype(np.uint16)
+    )
+    df.sort_values("sp", inplace=True)
+    df[["concentration", "synthesis"]] = df["filename"].str.extract(
+        r"^SP_[0-9]+ [a-zA-Z0-9]+ ([0-9]+) AgNP (N[1-9]+)\.txt$"
+    )
+    df.fillna(method="ffill", inplace=True)
+    df["concentration"] = df["concentration"].astype(np.uint16)
+    df["synthesis"] = df["synthesis"].astype("category")
+    df["repetition"] = (
+        df.groupby(["synthesis", "concentration"])["sp"]
+        .rank(method="first", ascending=True)
+        .astype(np.uint8)
+    )
+    df["sr"] = df["synthesis"].astype(str) + "_" + df["repetition"].astype(str)
+    res = df.pivot_table(
+        values="peak_rel", index=["folder", "concentration"], columns=["sr"]
+    ).reset_index()
+    res["avg"] = res.iloc[:, 2:].mean(axis=1)
+
+    with pd.ExcelWriter(
+        os.path.join(target_dir, "peak_values.xlsx"), engine="openpyxl"
+    ) as writer:
+        for folder in df["folder"].cat.categories:
+            res.loc[df["folder"] == folder, res.columns != "folder"].to_excel(
+                writer, sheet_name=folder, header=True, index=False
+            )
+    return {"peak_values.xlsx": True}

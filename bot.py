@@ -12,9 +12,13 @@ from telegram.ext.filters import Filters
 # OWN
 from models import UserFiles
 from utils import get_file_info, remove_extension, extract_file, zipdir
-from actions import recalibrate, dep
+from actions import recalibrate, dep, process_agnp_synthesis_experiments
 
-ACTIONS_MAPPING = {"recal": recalibrate, "dep": dep}
+ACTIONS_MAPPING = {
+    "recal": recalibrate,
+    "dep": dep,
+    "agnp": process_agnp_synthesis_experiments,
+}
 
 # Set globals
 BASEDIR = os.path.abspath(os.path.dirname(__file__))
@@ -42,10 +46,11 @@ def start(bot, update):
         "Здравствуйте!\n",
         "Я бот ИБХФ РАН, который поможет автоматизировать рутинные задачи лаборатории.",
         "Я пока еще молод и не всему успел научиться.",
-        "На текущий момент я могу рекалибровать спетры BWTek."
-        "Также я учусь обсчитывать эксперименты с ДЭФ (спросите Наташу:))",
-        "и строить калибровки, так что скоро это тоже будет доступно.",
-        "\n\nЧтобы рекалибровать спетры просто пришлите данные в архиве *.zip или *.rar",
+        "На текущий момент я умею:\n",
+        " - переформатировать спетры BWTek\n",
+        " - обрабатывать эксперименты ДЭФ (спросите Наташу)\n",
+        " - обрабатывать эксперименты по синтезу частиц (спросите Колю)\n",
+        "\n\nЧтобы обработать спетры просто пришлите данные в архиве *.zip или *.rar",
         "и выберете соответствующее действие. Если нужно обработать только один файл,",
         "то можно его не архифировать. Архивы *.zip более предпочтительны.",
         "\n\nЕсли возникнут сложности, обращайтесь к моему непосредственному руководителю:",
@@ -103,7 +108,7 @@ def choose_document_action(bot, update):
         keyboard = [
             [
                 InlineKeyboardButton(
-                    "Рекалибровать BWTek",
+                    "Переформатировать BWTek -> txt (два столбца)",
                     callback_data='{"action":"recal", "uf":"%s"}'
                     % userfile.id,
                 )
@@ -112,6 +117,12 @@ def choose_document_action(bot, update):
                 InlineKeyboardButton(
                     "Посчитать для ДЭФ",
                     callback_data='{"action":"dep", "uf":"%s"}' % userfile.id,
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    "Обработать результаты по синтезу частиц",
+                    callback_data='{"action":"agnp", "uf":"%s"}' % userfile.id,
                 )
             ],
         ]
