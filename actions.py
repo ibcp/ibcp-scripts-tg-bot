@@ -156,6 +156,11 @@ def process_agnp_synthesis_experiments(target_dir):
     ).reset_index()
     res["avg"] = res.iloc[:, 2:].mean(axis=1)
 
+    # Clear target dir to keep only reports
+    shutil.rmtree(target_dir, ignore_errors=True)
+    os.mkdir(target_dir)
+
+    # Write to Excel file
     with pd.ExcelWriter(
         os.path.join(target_dir, "peak_values.xlsx"), engine="openpyxl"
     ) as writer:
