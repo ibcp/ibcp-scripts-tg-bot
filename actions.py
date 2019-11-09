@@ -42,8 +42,8 @@ def load_ratio_files(
     return ratios
 
 
-def recalibrate_bwtek_single_file(filepath: str) -> None:
-    """Recalibrate a single BWTek-file (with replacement) to a two-columns *.txt file"""
+def read_bwtek_with_ratio_correction(filepath: str) -> pyspectra.Spectra:
+    """Read BWTek files with custom ratio files"""
     # Find a row where the data starts
     ccode = None
     with open(filepath, "r") as fp:
@@ -120,25 +120,38 @@ def recalibrate_bwtek_single_file(filepath: str) -> None:
     data = data[["Raman Shift", "corrected_raw_without_dark"]]
     data.dropna(axis=0, how="any", inplace=True)
 
-    # Write the values to the same file in csv format
-    data.to_csv(filepath, header=False, index=False)
+    s = pyspectra.Spectra(
+        spc=data["corrected_raw_without_dark"],
+        wl=data["Raman Shift"],
+        data={"ccode": ccode},
+        keep_indexes=False,
+    )
+    s.reset_index(drop=True, inplace=True)
+    return s
 
 
-def transform_bwtek_single_file(filepath: str) -> None:
+def transform_bwtek_single_file(
+    filepath: str, recalibrate: bool = False
+) -> None:
     """Transform a single BWTek-file (with replacement) to a two-columns *.txt file"""
-    spc = pyspectra.read_bwtek(filepath)
+    if recalibrate:
+        spc = read_bwtek_with_ratio_correction(filepath)
+    else:
+        spc = pyspectra.read_bwtek(filepath)
     spc = spc[:, :, 80:3010]
     df = pd.DataFrame({"wl": spc.wl, "spc": spc.spc.iloc[0, :].values})
     df.to_csv(filepath, header=False, index=False)
 
 
-def transform_files(files: List[str], callback: Callable) -> Dict[str, bool]:
+def transform_files(
+    files: List[str], callback: Callable, **kwargs
+) -> Dict[str, bool]:
     """ Call a callback function for each file in a file list"""
     files_status = {}
     for filename in files:
         if os.path.isfile(filename):
             try:
-                callback(filename)
+                callback(filename, **kwargs)
                 files_status[filename] = True
             except Exception as e:
                 files_status[filename] = False
@@ -153,7 +166,9 @@ def transform_bwtek(target_dir: str) -> Dict[str, bool]:
 
 def recalibrate_bwtek(target_dir: str) -> Dict[str, bool]:
     files = glob.iglob(os.path.join(target_dir, "**/*.txt"), recursive=True)
-    return transform_files(files, recalibrate_bwtek_single_file)
+    return transform_files(
+        files, transform_bwtek_single_file, recalibrate=True
+    )
 
 
 def dep(target_dir: str) -> Dict[str, bool]:
@@ -168,7 +183,9 @@ def dep(target_dir: str) -> Dict[str, bool]:
 
     # Read all files
     files = glob.glob(os.path.join(target_dir, "**/*.txt"), recursive=True)
-    s = pyspectra.read_filelist(files, pyspectra.read_bwtek, meta="Date")
+    s = pyspectra.read_filelist(
+        files, read_bwtek_with_ratio_correction, meta="Date"
+    )
     s.reset_index(drop=True, inplace=True)
     df = s.data
     df["Date"] = pd.to_datetime(df["Date"], format="%Y-%m-%d %H:%M:%S")
@@ -245,7 +262,7 @@ def process_agnp_synthesis_experiments(target_dir: str) -> Dict[str, bool]:
     """Build summary of an AgNp synthesis experiment"""
     # Read all files
     files = glob.glob(os.path.join(target_dir, "**/*.txt"), recursive=True)
-    s = pyspectra.read_filelist(files, pyspectra.read_bwtek)
+    s = pyspectra.read_filelist(files, read_bwtek_with_ratio_correction)
     s.reset_index(drop=True, inplace=True)
     df = s.data
     # Keep only used region to use less memory
