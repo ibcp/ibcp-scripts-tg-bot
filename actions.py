@@ -1,28 +1,144 @@
 import os
+import re
 import shutil
 import glob
 import logging
+from typing import Optional, Union, Dict, Callable, List
+
 import numpy as np
 import pandas as pd
 import pyspectra
 
 
-def recalibrate_single_file(filepath):
-    """Recalibrate single file with replacement"""
+def load_ratio_files(
+    ccode: Optional[str] = None,
+) -> Union[pd.DataFrame, Dict[str, pd.DataFrame]]:
+    """Read ratio files
+
+    By default, all ratio files are read and the output is a dict <ccode>:
+    <DataFrame of the ratio coefficients>.  If `ccode` is provided,
+    then only the corresponding DataFrame is returned. I.e. the output is
+    equivalent to load_ratio_files()[ccode]
+    """
+    from app import app
+
+    RATIO_FILES_DIR = app.config["RATIO_FILES_DIR"]
+    if ccode is not None:
+        ratio_file = os.path.join(RATIO_FILES_DIR, f"{ccode.upper()}.txt")
+        return pd.read_csv(
+            ratio_file, header=None, sep=";", names=["Pixel", "Coeff"]
+        )
+
+    ratios = {}
+    for ratio_file in glob.glob(
+        os.path.join(RATIO_FILES_DIR, "*.txt"), recursive=False
+    ):
+        ccode = os.path.basename(ratio_file).split(".")[0]
+        df = pd.read_csv(
+            ratio_file, header=None, sep=";", names=["Pixel", "Coeff"]
+        )
+        df["Pixel"] = df["Pixel"].astype(np.uint16)
+        ratios[ccode] = df
+    return ratios
+
+
+def recalibrate_bwtek_single_file(filepath: str) -> None:
+    """Recalibrate a single BWTek-file (with replacement) to a two-columns *.txt file"""
+    # Find a row where the data starts
+    ccode = None
+    with open(filepath, "r") as fp:
+        line = fp.readline()
+        cnt = 0
+        if not line.startswith("File Version;BWSpec"):
+            raise TypeError(
+                "Incorrect BWTek file format. The first row does "
+                "not match 'File Version;BWSpec<...>'"
+            )
+
+        while line and not line.startswith("Pixel;"):
+            line = fp.readline()
+            if line.startswith("c code;"):
+                ccode = line.split(";")[1].strip()
+            cnt += 1
+
+        # Check that 'c code' and 'Pixel' values were found
+        if ccode is None:
+            raise TypeError(
+                "Incorrect BWTek file format. 'c code' value was not found"
+            )
+        if not line.startswith("Pixel;"):
+            raise TypeError(
+                "Incorrect BWTek file format. Could not to find a "
+                "row starting with 'Pixel;'"
+            )
+        # Get decimal delimiter
+        first_data_line = fp.readline().strip()
+        decimal_del = re.sub("[0-9; -]", "", first_data_line)
+        decimal_del = list(set(list(decimal_del)))
+        if not (len(decimal_del) == 1 and decimal_del[0] in (",", ".")):
+            raise TypeError(
+                "Incorrect BWTek file format. Could not to find the decimal delimiter"
+            )
+        decimal_del = decimal_del[0]
+
+    # CSV read options
+    options = {
+        "skiprows": cnt,
+        "sep": ";",
+        "decimal": decimal_del,
+        "na_values": ("", " ", "  ", "   ", "    "),
+        "usecols": [
+            "Pixel",
+            "Raman Shift",
+            "Dark",
+            "Raw data #1",
+            "Dark Subtracted #1",
+        ],
+        "dtype": np.float64,
+    }
+    data = pd.read_csv(filepath, **options)
+    data["raw_without_dark"] = data["Raw data #1"] - data["Dark"]
+
+    # Load corresponding ratio coefficients
+    ratio = load_ratio_files(ccode)
+
+    if data.shape[0] != ratio.shape[0]:
+        raise TypeError(
+            "The spectrum file and the corresponding ratio file have different number of rows"
+        )
+
+    # Apply the coefficients. To be sure, join data and ratio coefficients by Pixel value
+    ratio.set_index("Pixel", inplace=True)
+    data["Pixel"] = data["Pixel"].astype(ratio["Pixel"].dtype)
+    data.set_index("Pixel", inplace=True)
+    data = pd.concat([data, ratio], axis=1)
+    data["corrected_raw_without_dark"] = (
+        data["raw_without_dark"] * data["Coeff"]
+    )
+
+    # Clear values before writing to the file
+    data = data[["Raman Shift", "corrected_raw_without_dark"]]
+    data.dropna(axis=0, how="any", inplace=True)
+
+    # Write the values to the same file in csv format
+    data.to_csv(filepath, header=False, index=False)
+
+
+def transform_bwtek_single_file(filepath: str) -> None:
+    """Transform a single BWTek-file (with replacement) to a two-columns *.txt file"""
     spc = pyspectra.read_bwtek(filepath)
     spc = spc[:, :, 80:3010]
     df = pd.DataFrame({"wl": spc.wl, "spc": spc.spc.iloc[0, :].values})
     df.to_csv(filepath, header=False, index=False)
 
 
-def recalibrate(target_dir):
+def transform_files(files: List[str], callback: Callable) -> Dict[str, bool]:
+    """ Call a callback function for each file in a file list"""
     files_status = {}
-    for filename in glob.iglob(
-        os.path.join(target_dir, "**/*.txt"), recursive=True
-    ):
+    for filename in files:
         if os.path.isfile(filename):
             try:
-                recalibrate_single_file(filename)
+                callback(filename)
                 files_status[filename] = True
             except Exception as e:
                 files_status[filename] = False
@@ -30,7 +146,17 @@ def recalibrate(target_dir):
     return files_status
 
 
-def dep(target_dir):
+def transform_bwtek(target_dir: str) -> Dict[str, bool]:
+    files = glob.iglob(os.path.join(target_dir, "**/*.txt"), recursive=True)
+    return transform_files(files, transform_bwtek_single_file)
+
+
+def recalibrate_bwtek(target_dir: str) -> Dict[str, bool]:
+    files = glob.iglob(os.path.join(target_dir, "**/*.txt"), recursive=True)
+    return transform_files(files, recalibrate_bwtek_single_file)
+
+
+def dep(target_dir: str) -> Dict[str, bool]:
     """Build summary of a dielectrophoresis experiment"""
 
     # If all in one root dir switch to it
@@ -115,7 +241,7 @@ def dep(target_dir):
     return {"report.xlsx": True}
 
 
-def process_agnp_synthesis_experiments(target_dir):
+def process_agnp_synthesis_experiments(target_dir: str) -> Dict[str, bool]:
     """Build summary of an AgNp synthesis experiment"""
     # Read all files
     files = glob.glob(os.path.join(target_dir, "**/*.txt"), recursive=True)

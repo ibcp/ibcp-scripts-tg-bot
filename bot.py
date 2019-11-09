@@ -12,10 +12,16 @@ from telegram.ext.filters import Filters
 # OWN
 from models import UserFiles
 from utils import get_file_info, remove_extension, extract_file, zipdir
-from actions import recalibrate, dep, process_agnp_synthesis_experiments
+from actions import (
+    transform_bwtek,
+    recalibrate_bwtek,
+    dep,
+    process_agnp_synthesis_experiments,
+)
 
 ACTIONS_MAPPING = {
-    "recal": recalibrate,
+    "trans": transform_bwtek,
+    "recal": recalibrate_bwtek,
     "dep": dep,
     "agnp": process_agnp_synthesis_experiments,
 }
@@ -108,7 +114,14 @@ def choose_document_action(bot, update):
         keyboard = [
             [
                 InlineKeyboardButton(
-                    "Переформатировать BWTek -> txt (два столбца)",
+                    "Переформатировать BWTek в txt (два столбца)",
+                    callback_data='{"action":"trans", "uf":"%s"}'
+                    % userfile.id,
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    "Рекалибровать BWTek",
                     callback_data='{"action":"recal", "uf":"%s"}'
                     % userfile.id,
                 )

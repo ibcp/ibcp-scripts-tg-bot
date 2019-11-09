@@ -17,6 +17,7 @@ class Config(object):
     TMP_DIR = os.path.join(BASEDIR, "tmp")
     DOWLOAD_DIR = os.path.join(BASEDIR, "downloads")
     PROCESSED_DIR = os.path.join(BASEDIR, "processed_files")
+    RATIO_FILES_DIR = os.path.join(BASEDIR, "ratio_files")
 
 
 class ProductionConfig(Config):
