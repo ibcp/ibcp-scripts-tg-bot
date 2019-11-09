@@ -108,8 +108,8 @@ def recalibrate_bwtek_single_file(filepath: str) -> None:
         )
 
     # Apply the coefficients. To be sure, join data and ratio coefficients by Pixel value
-    ratio.set_index("Pixel", inplace=True)
     data["Pixel"] = data["Pixel"].astype(ratio["Pixel"].dtype)
+    ratio.set_index("Pixel", inplace=True)
     data.set_index("Pixel", inplace=True)
     data = pd.concat([data, ratio], axis=1)
     data["corrected_raw_without_dark"] = (
