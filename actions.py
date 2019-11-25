@@ -265,10 +265,14 @@ def process_agnp_synthesis_experiments(target_dir: str) -> Dict[str, bool]:
     s = pyspectra.read_filelist(files, read_bwtek_with_ratio_correction)
     s.reset_index(drop=True, inplace=True)
     df = s.data
+
     # Keep only used region to use less memory
-    df["peak"] = s[:, :, 1560:1590].spc.max(axis=1)
     df["bg"] = s[:, :, 1990:2010].spc.median(axis=1)
-    df["peak_rel"] = df["peak"] - df["bg"]
+    df["peak_mPBA"] = s[:, :, 1560:1590].spc.max(axis=1) - df["bg"]
+    df["peak_xanth"] = s[:, :, 630:680].spc.max(axis=1) - df["bg"]
+    df["peak_amPyr"] = (
+        s[:, :, 1990:2010].spc.max(axis=1) - df["bg"]
+    )  # dummy region
     del s
 
     # Folder of the file
@@ -278,24 +282,41 @@ def process_agnp_synthesis_experiments(target_dir: str) -> Dict[str, bool]:
         .astype("category")
     )
     df["filename"] = df["filename"].apply(os.path.basename)
+
+    # Sort and fill missing values
     df["sp"] = (
         df["filename"].str.extract(r"^SP_([0-9]+)[ \.]").astype(np.uint16)
     )
-    df.sort_values("sp", inplace=True)
-    df[["concentration", "synthesis"]] = df["filename"].str.extract(
-        r"^SP_[0-9]+ [a-zA-Z0-9]+ ([0-9]+) AgNP (N[1-9]+)\.txt$"
+    df.sort_values(["folder", "sp"], inplace=True)
+    df[["analyte", "concentration", "synthesis"]] = df["filename"].str.extract(
+        r"^SP_[0-9]+ ([a-zA-Z0-9_]+) ([0-9_]+) AgNP (N[1-9]+)\.txt$"
     )
     df.fillna(method="ffill", inplace=True)
-    df["concentration"] = df["concentration"].astype(np.uint16)
+
+    # Format fields
+    df["concentration"] = (
+        df["concentration"]
+        .str.replace("_", ".", regex=False)
+        .astype(np.float32)
+    )
     df["synthesis"] = df["synthesis"].astype("category")
+    df["peak"] = (
+        df["peak_mPBA"] * df["analyte"].isin(["NaAc", "mPBA"]).astype(np.uint8)
+        + df["peak_xanth"]
+        * df["analyte"].isin(["NaAc_x", "xanth"]).astype(np.uint8)
+        + df["peak_amPyr"]
+        * df["analyte"].isin(["NaAc_ap", "amPyr"]).astype(np.uint8)
+    )
+
+    # Build the pivot
     df["repetition"] = (
-        df.groupby(["synthesis", "concentration"])["sp"]
+        df.groupby(["folder", "synthesis", "concentration"])["sp"]
         .rank(method="first", ascending=True)
         .astype(np.uint8)
     )
     df["sr"] = df["synthesis"].astype(str) + "_" + df["repetition"].astype(str)
     res = df.pivot_table(
-        values="peak_rel", index=["folder", "concentration"], columns=["sr"]
+        values="peak", index=["folder", "concentration"], columns=["sr"]
     ).reset_index()
     res["avg"] = res.iloc[:, 2:].mean(axis=1)
 
