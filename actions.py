@@ -267,12 +267,21 @@ def process_agnp_synthesis_experiments(target_dir: str) -> Dict[str, bool]:
     df = s.data
 
     # Keep only used region to use less memory
-    df["bg"] = s[:, :, 1990:2010].spc.median(axis=1)
-    df["peak_mPBA"] = s[:, :, 1560:1590].spc.max(axis=1) - df["bg"]
-    df["peak_xanth"] = s[:, :, 630:680].spc.max(axis=1) - df["bg"]
+    df["peak_mPBA"] = (
+        # Peak - background
+        s[:, :, 1560:1590].spc.max(axis=1)
+        - s[:, :, 1610:1630].spc.median(axis=1)
+    )
+    df["peak_xanth"] = (
+        # Peak - background
+        s[:, :, 630:680].spc.max(axis=1)
+        - s[:, :, 1990:2010].spc.median(axis=1)
+    )
     df["peak_amPyr"] = (
-        s[:, :, 1990:2010].spc.max(axis=1) - df["bg"]
-    )  # dummy region
+        # Peak - background. Dummy values, for now
+        s[:, :, 1990:2010].spc.max(axis=1)
+        - s[:, :, 1990:2010].spc.max(axis=1)
+    )
     del s
 
     # Folder of the file
