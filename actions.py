@@ -270,11 +270,11 @@ def process_agnp_synthesis_experiments(target_dir: str) -> Dict[str, bool]:
     df["peak_mPBA"] = (
         # Peak - background
         s[:, :, 1560:1590].spc.max(axis=1)
-        - s[:, :, 1610:1630].spc.median(axis=1)
+        - s[:, :, 1690:1710].spc.median(axis=1)
     )
     df["peak_xanth"] = (
         # Peak - background
-        s[:, :, 630:680].spc.max(axis=1)
+        s[:, :, 1690:1730].spc.max(axis=1)
         - s[:, :, 1990:2010].spc.median(axis=1)
     )
     df["peak_amPyr"] = (
